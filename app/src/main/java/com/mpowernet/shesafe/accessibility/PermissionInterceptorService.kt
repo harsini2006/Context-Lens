@@ -244,6 +244,13 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
                     isIntegrityFailed = isIntegrityFailed,
                     onDismiss = { decision ->
                         serviceScope.launch {
+                            val signatureResult = withContext(Dispatchers.Default) {
+                                com.mpowernet.shesafe.security.ZkcpEngine.signConsent(
+                                    packageName = lastTargetPackage,
+                                    permission = rule.permissionId,
+                                    decision = decision
+                                )
+                            }
                             withContext(Dispatchers.IO) {
                                 database.consentLogDao().insertLog(
                                     ConsentLog(
@@ -251,7 +258,9 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
                                         appPackage = lastTargetPackage,
                                         permissionRequested = rule.permissionId,
                                         riskAssigned = adjustedRisk,
-                                        decision = decision
+                                        decision = decision,
+                                        zkcpSignature = signatureResult.signature,
+                                        zkcpSalt = signatureResult.salt
                                     )
                                 )
                             }

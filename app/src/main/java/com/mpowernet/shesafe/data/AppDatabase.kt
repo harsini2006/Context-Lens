@@ -15,7 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Database(entities = [PermissionRule::class, ConsentLog::class, VaultItem::class], version = 1, exportSchema = false)
+@Database(entities = [PermissionRule::class, ConsentLog::class, VaultItem::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun permissionRuleDao(): PermissionRuleDao
     abstract fun consentLogDao(): ConsentLogDao
@@ -41,6 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "shesafe_database"
                 )
                 .openHelperFactory(factory)
+                .fallbackToDestructiveMigration()
                 .addCallback(DatabaseCallback(scope))
                 .build()
                 INSTANCE = instance

@@ -10,5 +10,7 @@ data class ConsentLog(
     val appPackage: String,
     val permissionRequested: String,
     val riskAssigned: String,
-    val decision: String // "ALLOWED", "BLOCKED", "DISMISSED"
+    val decision: String, // "ALLOWED", "BLOCKED", "DISMISSED"
+    val zkcpSignature: String? = null,
+    val zkcpSalt: String? = null
 )

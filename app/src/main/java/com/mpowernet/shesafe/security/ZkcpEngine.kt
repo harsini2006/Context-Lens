@@ -44,6 +44,34 @@ object ZkcpEngine {
         return kpg.generateKeyPair()
     }
 
+    data class SignatureResult(val signature: String, val salt: String)
+
+    /**
+     * Signs the consent data at the exact moment of decision, generating an immutable proof pair.
+     */
+    fun signConsent(packageName: String, permission: String, decision: String): SignatureResult {
+        try {
+            val keyPair = getOrCreateKeyPair()
+            val saltBytes = ByteArray(16)
+            SecureRandom().nextBytes(saltBytes)
+            val saltBase64 = Base64.encodeToString(saltBytes, Base64.NO_WRAP)
+
+            val inputString = "$packageName:$permission:$decision:$saltBase64"
+            val digest = MessageDigest.getInstance("SHA-256")
+            val commitmentHash = digest.digest(inputString.toByteArray())
+
+            val signatureInstance = Signature.getInstance("SHA256withECDSA")
+            signatureInstance.initSign(keyPair.private)
+            signatureInstance.update(commitmentHash)
+            val signatureBytes = signatureInstance.sign()
+            val signatureBase64 = Base64.encodeToString(signatureBytes, Base64.NO_WRAP)
+
+            return SignatureResult(signatureBase64, saltBase64)
+        } catch (e: Exception) {
+            return SignatureResult("", "")
+        }
+    }
+
     /**
      * Generates a local Zero-Knowledge Consent Proof (ZKCP) Receipt JSON.
      * The receipt commits to the consent decision anonymously by hashing the log data with a secure salt,
@@ -53,28 +81,31 @@ object ZkcpEngine {
         try {
             val keyPair = getOrCreateKeyPair()
             
-            // 1. Generate random salt (16 bytes)
-            val saltBytes = ByteArray(16)
-            SecureRandom().nextBytes(saltBytes)
-            val saltBase64 = Base64.encodeToString(saltBytes, Base64.NO_WRAP)
+            // Use existing signature and salt from log if present, else fall back to generation
+            val saltBase64 = log.zkcpSalt ?: run {
+                val saltBytes = ByteArray(16)
+                SecureRandom().nextBytes(saltBytes)
+                Base64.encodeToString(saltBytes, Base64.NO_WRAP)
+            }
 
-            // 2. Compute the commitment hash: SHA-256(Package + Permission + Decision + Salt)
+            // Compute the commitment hash: SHA-256(Package + Permission + Decision + Salt)
             val inputString = "${log.appPackage}:${log.permissionRequested}:${log.decision}:$saltBase64"
             val digest = MessageDigest.getInstance("SHA-256")
             val commitmentHash = digest.digest(inputString.toByteArray())
             val commitmentHashHex = commitmentHash.joinToString("") { "%02x".format(it) }
 
-            // 3. Create ECDSA signature over the commitment hash
-            val signatureInstance = Signature.getInstance("SHA256withECDSA")
-            signatureInstance.initSign(keyPair.private)
-            signatureInstance.update(commitmentHash)
-            val signatureBytes = signatureInstance.sign()
-            val signatureBase64 = Base64.encodeToString(signatureBytes, Base64.NO_WRAP)
+            val signatureBase64 = log.zkcpSignature ?: run {
+                val signatureInstance = Signature.getInstance("SHA256withECDSA")
+                signatureInstance.initSign(keyPair.private)
+                signatureInstance.update(commitmentHash)
+                val signatureBytes = signatureInstance.sign()
+                Base64.encodeToString(signatureBytes, Base64.NO_WRAP)
+            }
 
-            // 4. Encode Public Key
+            // Encode Public Key
             val publicKeyBase64 = Base64.encodeToString(keyPair.public.encoded, Base64.NO_WRAP)
 
-            // 5. Assemble ZKCP Proof JSON
+            // Assemble ZKCP Proof JSON
             val proofJson = JSONObject().apply {
                 put("schema", "DPDP-Consent-Proof-v1")
                 put("commitmentHash", commitmentHashHex)
