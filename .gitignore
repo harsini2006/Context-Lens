@@ -1,0 +1,14 @@
+# Android / Gradle ignore rules
+.gradle
+/build
+/app/build
+local.properties
+.idea
+*.apk
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+.DS_Store

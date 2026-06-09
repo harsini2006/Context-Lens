@@ -1,0 +1,147 @@
+# SHE-SAFE: CONTEXTLENS REFERENCING AND VERDICTS DIRECTORY
+=========================================================
+
+[PROJECT DETAILS]
+- Team Name: MPOWERNET
+- Institution: Chennai Institute of Technology (CIT), Chennai
+- Problem Statement: PS5 – Safe Digital Onboarding Kit for First-Time Women Internet Users
+- Target Platform: Mobile App (Android)
+- Concept: ContextLens - On-device permission companion converting raw permissions into visual/audio consequence cards.
+
+---------------------------------------------------------
+1. CRITICAL DESIGN & ACCESSIBILITY REQUIREMENTS (THE VERDICTS)
+---------------------------------------------------------
+- UI Minimalist: Keep wording extremely sparse; avoid commercial-looking bloated designs.
+- Sentences: Maximum of 8 words per sentence to explain permissions.
+- Voice/Audio Support: MUST be user-enabled toggle only (to avoid annoying the user).
+- Deaf & Dumb Accessibility: Use strong icon-based guidance, haptic patterns, and color cues.
+- Universal Usability: Accessible and simple enough for both rural and urban users.
+- Non-Annoying: Do not bombard with popups. Easy dismiss/close mechanisms instead of forcing interactions.
+- Visual Alerts:
+  * Use color gradients (light blue tones included).
+  * ALL popups must be in CAPITAL LETTERS if hazardous.
+  * Highlight HIGH-RISK hazards with RED. Lower risks should not have oversized alerts.
+
+---------------------------------------------------------
+2. HIGH-PRIORITY FEATURES FOR PRESENTATION & JUDGES
+---------------------------------------------------------
+1. Personal Trust Seal (Secret emoji/icon selected by user to detect fake overlay screens).
+2. Duress-Aware Private Vault & Stealth Mode (Protects history/settings on shared devices).
+3. Panic Wipe (One-tap vault and history eraser).
+4. Visual Consent Cards (Visual consequence mapping via simple icons/animations).
+5. Session-Level Anomaly Detection (FSM engine checking permission requests velocity).
+6. Multimodal Phishing Detector & UI Authenticity Verification.
+7. Zero-Knowledge Consent Proof (ZKCP) (Proof of consent without exposing user/app details).
+8. Fully Offline Privacy-First Architecture (SQLite/Room, zero cloud requirements).
+9. Audio Consent Narration (Android TTS bound to offline execution).
+10. DPDP 2025 Compliance Engine (Ensures consent is free, informed, specific, and plain-language).
+
+---------------------------------------------------------
+3. AUDIT THREAT SURFACE & REDESIGN RESOLUTIONS
+---------------------------------------------------------
+* V1: Knowledge Base Poisoning (High)
+  - Issue: No integrity check on SQLite/Room local DB allows malicious replacement of permission mappings.
+  - Fix: Hardcode SHA-256 hash or Ed25519 signature validation of the DB file on every app launch.
+
+* V2: Permission Laundering via Trust Exploitation (High)
+  - Issue: Isolated permission checking enables silent progressive escalation (Low -> Medium -> High).
+  - Fix: Session-level FSM Behavioral Pattern Engine to rate-limit permission frequency and flag rapid escalations.
+
+* V3: Cross-Extension / App UI Overlay Spoofing (High)
+  - Issue: Tapjacking and fake popups intercepting user decisions.
+  - Fix: Enable Android's `filterTouchesWhenObscured` window flag to reject touches during active overlays.
+
+* V4: TTS Privacy Side-Channel (Medium)
+  - Issue: Playback exposes sensitive actions in public/shared settings; TTS leaks data online.
+  - Fix: Bound app to Android's offline-only TTS engine. Implement haptic fallback patterns (short/long pulses) and earphone-detection.
+
+* V5: Translation Pack Integrity (Medium)
+  - Issue: Hindi translation packs tampered with to swap "High Risk" to "Low Risk" text.
+  - Fix: Sign translation resource packs at build time using cryptographic signatures.
+
+* V6: APK Impersonation & Sideloading (High)
+  - Issue: Rural users downloading fake ContextLens clones from WhatsApp/untrusted links.
+  - Fix: Google Play Integrity API binding and self-signature verification checks on startup.
+
+---------------------------------------------------------
+4. COMPETITIVE LANDSCAPE & EXISTING GAPS
+---------------------------------------------------------
+- Govt of India Solutions:
+  * National Cyber Crime Reporting Portal (cybercrime.gov.in) -> Reporting only, reactive.
+  * ISEA Stay Safe Online (staysafeonline.in) -> Campaigns, quizzes, awareness packs.
+  * e-SafeHER (Reliance/C-DAC) -> Multilingual awareness training for SHGs.
+  * PMGDISHA (pmgdisha.in) -> General digital literacy training.
+- Civil Society Solutions:
+  * Digital Shakti 5.0 (digitalshakti.org) -> Interactive workshops, training programs.
+  * TechSakhi Helpline (techsakhi.in) -> Multilingual support helpline for abuse.
+- The Gap: All existing systems are either educational campaigns, general courses, training workshops, or post-incident reporting systems. None act as a real-time, proactive, on-device companion guiding users dynamically when permissions are requested.
+
+---------------------------------------------------------
+5. PROPER TECH STACK (SECURE MOBILE APP FOCUS)
+---------------------------------------------------------
+- Core Development Language: Kotlin (safety-first native code) and Java (compatibility layer).
+- UI Framework: Jetpack Compose (highly responsive declarative UI, smooth gradient transitions, and direct haptic integration).
+- Interception Engine: Android Accessibility Service API (AccessibilityService) to intercept and parse permission overlay layouts.
+- Database & Encryption: Room Persistence Library built on top of SQLCipher (AES-256 hardware-accelerated encryption at rest).
+- Key Management: Android Keystore System + StrongBox Keymaster (isolates cryptographic keys from application space).
+- Authenticity & Verification: Google Play Integrity API (real-time package/device signature attestation to prevent sideloaded fake APK runs).
+- Translation & Local Verification: Signature verification (Ed25519 / ECDSA) to authenticate offline translation packs and SQLite rule databases at startup.
+- Offline Audio & Haptics: Android Text-to-Speech (TTS) API restricted to offline engines via XML network security config; Android Haptic Feedback API.
+- Anomaly & Behavioral Engine: TensorFlow Lite (TFLite) for lightweight, on-device anomaly detection and behavioral modeling, backed by a local Kotlin Finite State Machine (FSM) for velocity/escalation limits.
+
+---------------------------------------------------------
+6. IMPLEMENTATION PHASES (5-STAGE ROADMAP)
+---------------------------------------------------------
+Phase 1: Foundation & Core MVP (Days/Weeks 1-3)
+* Set up standard Android project structure with Kotlin and Jetpack Compose.
+* Build the core Android Accessibility Service (`AccessibilityService`) to monitor permission dialogues.
+* Implement a local SQLite Database using Room to store permission risks and translations (English/Hindi).
+* Design minimal Consequence Cards UI with simple text (max 8 words) and local offline TTS support.
+
+Phase 2: Security Hardening & Trust Seal (Days/Weeks 4-6)
+* Upgrade SQLite to SQLCipher with AES-256 encryption.
+* Implement boot-time database SHA-256/signature checks to block database tampering.
+* Integrate Android's `filterTouchesWhenObscured` overlay security protection to prevent tapjacking.
+* Deploy the custom Personal Trust Seal overlay and Google Play Integrity signature validations.
+
+Phase 3: Vault, Stealth, & DPDP Compliance (Days/Weeks 7-9)
+* Develop the Duress-Aware Private Vault utilizing Room (encrypted partition) with Biometric/PIN prompts.
+* Create the Panic Wipe trigger (wiping all logs and vault keys from keystore).
+* Design the Stealth Mode configurations (launcher-hiding routines).
+* Build the local DPDP-compliant Audit Trail and generate ZKCP (Zero-Knowledge Consent Proof) signature bundles locally.
+
+Phase 4: ML & Computer Vision Protection (Days/Weeks 10-13)
+* Integrate TensorFlow Lite (TFLite) or ONNX Runtime Mobile inside the background service.
+* Implement screenshot analysis for spoofed popup UI templates (phishing overlay defense).
+* Set up the on-device Behavioral Pattern Engine (FSM) tracking session-level permission velocity/escalation alerts.
+
+Phase 5: Chrome Companion & Testing (Days/Weeks 14-16)
+* Build the Chrome extension companion (MV3) with side-panel API and document_start injection.
+* Connect local settings sync if relevant, or set up enterprise school/NGO deployments.
+* Conduct extensive security auditing (MobSF static scan, Semgrep check) and user testing.
+
+---------------------------------------------------------
+7. PHASE 1 COMPLETED IMPLEMENTATION DETAILS & RISKS RESEARCH
+---------------------------------------------------------
+- File Structure Created:
+  * `settings.gradle.kts` & `build.gradle.kts` (Project root)
+  * `gradle/libs.versions.toml` (Dependency catalog)
+  * `app/build.gradle.kts` (Compose, Room, Kapt dependencies)
+  * `app/src/main/AndroidManifest.xml` (Registers Accessibility Service & Dashboard MainActivity)
+  * `app/src/main/res/xml/accessibility_service_config.xml` (Flags windowStateChanged + canRetrieveWindowContent)
+  * `app/src/main/res/values/strings.xml` & `themes.xml` (Metadata resources & Light theme base)
+  * `app/src/main/res/drawable/` (Adaptive launcher assets)
+  * `app/src/main/java/com/mpowernet/shesafe/SheSafeApplication.kt` (Room database initialization)
+  * `app/src/main/java/com/mpowernet/shesafe/data/` (Room Entities: `PermissionRule`, `ConsentLog` & corresponding DAOs and AppDatabase with pre-seeded data)
+  * `app/src/main/java/com/mpowernet/shesafe/accessibility/` (Core `PermissionInterceptorService` and `LifecycleRegistryHelper` for Compose overlays)
+  * `app/src/main/java/com/mpowernet/shesafe/MainActivity.kt` (Dashboard displaying state, toggle settings, and local logs)
+
+- Key Architecture & Security Choices:
+  * Window Overlay Type: Used `TYPE_ACCESSIBILITY_OVERLAY` for the visual card. This bypasses the need for the dangerous `SYSTEM_ALERT_WINDOW` permission (draw-over-other-apps) which is confusing and difficult for first-time users to enable.
+  * Compose inside WindowManager: Handled lifecycle tree registration inside the AccessibilityService context using custom `LifecycleOwner` and `SavedStateRegistry` mocks, enabling native, interactive Compose views on top of system dialogs.
+  * Offline-First Rules seeding: Created database callback to seed rules during database instantiation, ensuring zero-cloud translation rules are ready instantly.
+
+- Research on Technical Interception Risks:
+  * Node Tree Latency: Android does not populate accessibility node trees immediately upon window changes. We introduced a 250ms coroutine delay to allow the layout tree to settle before scanning nodes.
+  * System Package Variations: Permission dialog package names vary across vendors (e.g. `com.google.android.permissioncontroller` vs `com.android.packageinstaller`). Handled by scanning for substring matches on both keywords.
+  * Window Touch Leakage: Configured overlay layout flags to include split-touch/outside touch handling to protect the overlay window from being bypassed or allowing click-through redirection.

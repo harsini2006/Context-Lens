@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SheSafe</string>
+    <string name="accessibility_service_description">SheSafe helps first-time users understand app permissions by translating raw requests into simple, offline visual cards with explanation support.</string>
+    <string name="accessibility_service_label">SheSafe ContextLens Interceptor</string>
+</resources>
