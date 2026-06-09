@@ -62,7 +62,15 @@ fun MainDashboardScreen(context: Context) {
     
     var isAccessibilityEnabled by remember { mutableStateOf(false) }
     var isTtsEnabled by remember { mutableStateOf(false) }
+    var selectedSeal by remember { mutableStateOf("🌻") }
     var consentLogs by remember { mutableStateOf(emptyList<ConsentLog>()) }
+
+    // Check system security and integrity status
+    val isDbValid = SheSafeApplication.isDatabaseIntegrityValid
+    val isPlayValid = SheSafeApplication.isPlayIntegrityValid
+    val isSystemSecure = isDbValid && isPlayValid
+
+    val trustSeals = listOf("🌻", "❤️", "⭐", "🌈", "🍀")
 
     // Check accessibility service status
     fun checkServiceStatus() {
@@ -89,11 +97,7 @@ fun MainDashboardScreen(context: Context) {
         loadLogs()
         val prefs = context.getSharedPreferences("shesafe_prefs", Context.MODE_PRIVATE)
         isTtsEnabled = prefs.getBoolean("tts_enabled", false)
-    }
-
-    // Track return to app to refresh status
-    DisposableEffect(Unit) {
-        onDispose { }
+        selectedSeal = prefs.getString("personal_trust_seal", "🌻") ?: "🌻"
     }
 
     val gradientBrush = Brush.verticalGradient(
@@ -130,6 +134,39 @@ fun MainDashboardScreen(context: Context) {
                 color = Color.Gray,
                 textAlign = TextAlign.Center
             )
+
+            // 1. System Integrity Warning Banner (LOUD alerts if tampered)
+            if (!isSystemSecure) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFD32F2F))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "⚠ SYSTEM SECURITY INTEGRITY BREACH!",
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = if (!isDbValid) {
+                                "Database file signature check failed. Integrity compromised."
+                            } else {
+                                "Application package verification failed (Sideload detected)."
+                            },
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
 
             // Service Status Card
             Card(
@@ -179,7 +216,7 @@ fun MainDashboardScreen(context: Context) {
                 }
             }
 
-            // Setting Panel Card
+            // Setting Panel Card (Voice toggle)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -218,6 +255,57 @@ fun MainDashboardScreen(context: Context) {
                             checkedTrackColor = Color(0xFFB2DFDB)
                         )
                     )
+                }
+            }
+
+            // Personal Trust Seal Selector Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Personal Trust Seal",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = "Select a secret symbol. Genuine cards will show this.",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        trustSeals.forEach { seal ->
+                            val isSelected = seal == selectedSeal
+                            val borderCol = if (isSelected) Color(0xFF00796B) else Color.Transparent
+                            val backCol = if (isSelected) Color(0xFFE0F7FA) else Color.Transparent
+                            
+                            OutlinedButton(
+                                onClick = {
+                                    selectedSeal = seal
+                                    context.getSharedPreferences("shesafe_prefs", Context.MODE_PRIVATE)
+                                        .edit()
+                                        .putString("personal_trust_seal", seal)
+                                        .apply()
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(containerColor = backCol),
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .border(2.dp, borderCol, RoundedCornerShape(12.dp)),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(text = seal, fontSize = 24.sp)
+                            }
+                        }
+                    }
                 }
             }
 

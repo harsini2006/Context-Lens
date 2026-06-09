@@ -172,10 +172,17 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
             removeOverlay()
         }
 
+        // Check if application integrity is compromised
+        val isIntegrityFailed = !SheSafeApplication.isDatabaseIntegrityValid || !SheSafeApplication.isPlayIntegrityValid
+
         // Determine actual risk mapping dynamically based on requesting package
         val allowedApps = rule.allowedPackagesCSV.split(",")
         val isExpected = allowedApps.any { lastTargetPackage.contains(it) }
-        val adjustedRisk = if (isExpected) "LOW" else rule.riskLevel
+        val adjustedRisk = if (isIntegrityFailed) "HIGH" else if (isExpected) "LOW" else rule.riskLevel
+
+        // Fetch selected trust seal from SharedPreferences
+        val prefs = getSharedPreferences("shesafe_prefs", Context.MODE_PRIVATE)
+        val selectedSeal = prefs.getString("personal_trust_seal", "🌻") ?: "🌻"
 
         overlayLayout = FrameLayout(this).apply {
             // Supply window bindings so ComposeView has lifecycle awareness
@@ -187,11 +194,16 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
         }
 
         val composeView = ComposeView(this).apply {
+            // Enable tapjacking protection on the root Compose overlay view
+            filterTouchesWhenObscured = true
+            
             setContent {
                 ConsequenceCardOverlay(
                     rule = rule,
                     assignedRisk = adjustedRisk,
                     targetPackage = lastTargetPackage,
+                    trustSeal = selectedSeal,
+                    isIntegrityFailed = isIntegrityFailed,
                     onDismiss = { decision ->
                         serviceScope.launch {
                             withContext(Dispatchers.IO) {
@@ -205,6 +217,8 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
                                     )
                                 )
                             }
+                            // Re-calculate the trusted database file hash after modifications
+                            (application as SheSafeApplication).updateDatabaseHash()
                             removeOverlay()
                         }
                     }
@@ -230,7 +244,7 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
             gravity = Gravity.CENTER
         }
 
-        // Apply tapjacking protection flag on modern Android versions
+        // Apply tapjacking split touch flags
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
             params.flags = params.flags or WindowManager.LayoutParams.FLAG_SPLIT_TOUCH
         }
@@ -239,7 +253,9 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
 
         // Read out loud if TTS is enabled and initialized
         if (isTtsEnabled && isTtsInitialized) {
-            val speakText = if (adjustedRisk == "HIGH") {
+            val speakText = if (isIntegrityFailed) {
+                "SECURITY WARNING. SYSTEM TAMPERING DETECTED. DO NOT TRUST THIS SCREEN."
+            } else if (adjustedRisk == "HIGH") {
                 "DANGER. ${rule.systemLabel} REQUEST DETECTED. ${rule.explanationEnglish}"
             } else {
                 "${rule.systemLabel} Request. ${rule.explanationEnglish}"
@@ -278,6 +294,8 @@ fun ConsequenceCardOverlay(
     rule: PermissionRule,
     assignedRisk: String,
     targetPackage: String,
+    trustSeal: String,
+    isIntegrityFailed: Boolean,
     onDismiss: (String) -> Unit
 ) {
     var useHindi by remember { mutableStateOf(false) }
@@ -314,6 +332,20 @@ fun ConsequenceCardOverlay(
                     .background(gradientBrush)
                     .padding(24.dp)
             ) {
+                // Trust Seal Floating indicator in top-right corner to prevent overlays
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(50))
+                        .border(1.dp, Color(0xFF00796B), RoundedCornerShape(50))
+                        .padding(8.dp)
+                ) {
+                    Text(
+                        text = trustSeal,
+                        fontSize = 18.sp
+                    )
+                }
+
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -325,7 +357,13 @@ fun ConsequenceCardOverlay(
                             .padding(horizontal = 16.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            text = if (assignedRisk == "HIGH") "DANGER / खतरा" else "WARNING / चेतावनी",
+                            text = if (isIntegrityFailed) {
+                                "CORRUPTED / छेड़छाड़"
+                            } else if (assignedRisk == "HIGH") {
+                                "DANGER / खतरा"
+                            } else {
+                                "WARNING / चेतावनी"
+                            },
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
@@ -347,7 +385,7 @@ fun ConsequenceCardOverlay(
 
                     // Permission Title
                     Text(
-                        text = rule.systemLabel.uppercase(),
+                        text = if (isIntegrityFailed) "INTEGRITY BREACH" else rule.systemLabel.uppercase(),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = riskColor,
@@ -356,7 +394,15 @@ fun ConsequenceCardOverlay(
 
                     // Explanation Card (Max 8 words per sentence layout)
                     Text(
-                        text = if (useHindi) rule.explanationHindi else rule.explanationEnglish,
+                        text = if (isIntegrityFailed) {
+                            if (useHindi) {
+                                "सुरक्षा चेतावनी: ऐप का सत्यापन विफल हो गया। छेड़छाड़ हुई है।"
+                            } else {
+                                "SECURITY WARNING: SYSTEM INTEGRITY VERIFICATION FAILED. THE DEVICE OR APP MAY BE COMPROMISED."
+                            }
+                        } else {
+                            if (useHindi) rule.explanationHindi else rule.explanationEnglish
+                        },
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.Black,
@@ -365,7 +411,7 @@ fun ConsequenceCardOverlay(
                     )
 
                     // Recommendation Action
-                    val recommendationText = if (assignedRisk == "HIGH") {
+                    val recommendationText = if (isIntegrityFailed || assignedRisk == "HIGH") {
                         if (useHindi) "सलाह: ब्लॉक करें" else "RECOMMENDED ACTION: BLOCK"
                     } else {
                         if (useHindi) "सलाह: अनुमति दें" else "RECOMMENDED ACTION: ALLOW"

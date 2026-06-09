@@ -24,11 +24,20 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context, scope: CoroutineScope): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+                // Initialize SQLCipher native libraries
+                net.sqlcipher.database.SQLiteDatabase.loadLibs(context.applicationContext)
+                
+                // Fetch Keystore passphrase
+                val passphrase = com.mpowernet.shesafe.security.KeyStoreManager
+                    .getOrCreateDatabasePassphrase(context.applicationContext)
+                val factory = net.sqlcipher.database.SupportFactory(passphrase)
+
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "shesafe_database"
                 )
+                .openHelperFactory(factory)
                 .addCallback(DatabaseCallback(scope))
                 .build()
                 INSTANCE = instance
