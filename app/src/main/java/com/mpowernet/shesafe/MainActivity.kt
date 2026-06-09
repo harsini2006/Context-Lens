@@ -55,13 +55,26 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// Global cyber-security color palette
+val CyberDark = Color(0xFF0B0F19)       // Midnight blue/black background
+val CyberCard = Color(0xFF161E30)       // Deep slate-navy card background
+val CyberGreen = Color(0xFF00E676)      // Neon mint green for active status
+val CyberBlue = Color(0xFF00B0FF)       // Electric cyan for primary actions
+val CyberRed = Color(0xFFFF1744)        // Neon coral red for alert/panic
+val CyberAmber = Color(0xFFFFB300)      // Amber yellow for warnings
+val CyberTextPrimary = Color(0xFFECEFF1)// Soft clean white
+val CyberTextSecondary = Color(0xFF90A4AE)// Muted gray-blue
+
 @Composable
 fun SheSafeTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = Color(0xFF00796B),
-            secondary = Color(0xFF00ACC1),
-            background = Color(0xFFF4F9F9)
+        colorScheme = darkColorScheme(
+            primary = CyberBlue,
+            secondary = CyberGreen,
+            background = CyberDark,
+            surface = CyberCard,
+            onBackground = CyberTextPrimary,
+            onSurface = CyberTextPrimary
         ),
         content = content
     )
@@ -86,7 +99,7 @@ fun MainDashboardScreen(context: Context) {
     var isDecoyMode by remember { mutableStateOf(false) }
     var vaultItems by remember { mutableStateOf(emptyList<VaultItem>()) }
 
-    // Check system security and integrity status
+    // Check system security and integrity status dynamically
     var isDbValid by remember { mutableStateOf(SheSafeApplication.isDatabaseIntegrityValid) }
     var isPlayValid by remember { mutableStateOf(SheSafeApplication.isPlayIntegrityValid) }
     val isSystemSecure = isDbValid && isPlayValid
@@ -167,7 +180,7 @@ fun MainDashboardScreen(context: Context) {
         }
     }
 
-    // Initialize state
+    // Initialize state and start background polling for integrity results
     LaunchedEffect(Unit) {
         checkServiceStatus()
         loadLogs()
@@ -176,7 +189,6 @@ fun MainDashboardScreen(context: Context) {
         selectedSeal = prefs.getString("personal_trust_seal", "🌻") ?: "🌻"
         isStealthEnabled = prefs.getBoolean("stealth_enabled", false)
         
-        // Asynchronously poll application-level integrity results as they finish loading
         launch(Dispatchers.Default) {
             while (true) {
                 val currentDbValid = SheSafeApplication.isDatabaseIntegrityValid
@@ -187,16 +199,13 @@ fun MainDashboardScreen(context: Context) {
                         isPlayValid = currentPlayValid
                     }
                 }
-                kotlinx.coroutines.delay(200)
+                kotlinx.coroutines.delay(250)
             }
         }
     }
 
     val gradientBrush = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFFE0F7FA), // Soft Light Blue
-            Color(0xFFF4F9F9)
-        )
+        colors = listOf(CyberDark, Color(0xFF13182B))
     )
 
     Box(
@@ -211,84 +220,117 @@ fun MainDashboardScreen(context: Context) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
-            Text(
-                text = "SheSafe ContextLens",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF00796B),
-                modifier = Modifier.padding(top = 16.dp)
-            )
-
-            Text(
-                text = "Safe digital onboarding companion",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                textAlign = TextAlign.Center
-            )
+            // Premium Brand Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "🛡️ SHESAFE",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    color = CyberBlue,
+                    letterSpacing = 1.5.sp
+                )
+                Text(
+                    text = " | ",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = CyberTextSecondary
+                )
+                Text(
+                    text = "CONTEXTLENS",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = CyberTextPrimary,
+                    letterSpacing = 1.sp
+                )
+            }
 
             // 1. System Integrity Warning Banner (LOUD alerts if tampered)
             if (!isSystemSecure) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, CyberRed, RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFD32F2F))
+                    colors = CardDefaults.cardColors(containerColor = CyberRed.copy(alpha = 0.12f))
                 ) {
-                    Column(
+                    Row(
                         modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = "⚠ SYSTEM SECURITY INTEGRITY BREACH!",
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
-                            fontSize = 15.sp,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = if (!isDbValid) {
-                                "Database file signature check failed. Integrity compromised."
-                            } else {
-                                "Application package verification failed (Sideload detected)."
-                            },
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            textAlign = TextAlign.Center
-                        )
+                        Text(text = "⚠️", fontSize = 28.sp)
+                        Column {
+                            Text(
+                                text = "SYSTEM INTEGRITY BREACHED",
+                                fontWeight = FontWeight.Bold,
+                                color = CyberRed,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = if (!isDbValid) {
+                                    "Database verification check failed. Tampering detected."
+                                } else {
+                                    "App package signature verification failed (Sideload detected)."
+                                },
+                                color = CyberTextPrimary,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
             }
 
-            // Service Status Card
+            // 2. Interceptor Status Card
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isAccessibilityEnabled) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-                )
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        1.dp, 
+                        if (isAccessibilityEnabled) CyberGreen else CyberAmber, 
+                        RoundedCornerShape(20.dp)
+                    ),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = CyberCard)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        text = if (isAccessibilityEnabled) "✓ SHESAFE INTERCEPTOR ACTIVE" else "⚠ SHESAFE INTERCEPTOR INACTIVE",
-                        fontWeight = FontWeight.Bold,
-                        color = if (isAccessibilityEnabled) Color(0xFF2E7D32) else Color(0xFFC62828),
-                        fontSize = 15.sp
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(if (isAccessibilityEnabled) CyberGreen else CyberAmber, RoundedCornerShape(4.dp))
+                        )
+                        Text(
+                            text = if (isAccessibilityEnabled) "INTERCEPTOR PROTECTION ACTIVE" else "INTERCEPTOR INACTIVE",
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isAccessibilityEnabled) CyberGreen else CyberAmber,
+                            fontSize = 14.sp,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
 
                     Text(
                         text = if (isAccessibilityEnabled) {
-                            "We are protecting your digital permissions in real-time."
+                            "ContextLens is actively shielding your system permission prompts from tapjacking, overlays, and spoofing attacks."
                         } else {
-                            "Please activate ContextLens to protect your permissions."
+                            "Enable the accessibility shield to analyze permission requests and protect your system configuration."
                         },
-                        fontSize = 13.sp,
-                        color = Color.DarkGray,
-                        textAlign = TextAlign.Center
+                        fontSize = 12.sp,
+                        color = CyberTextSecondary,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 16.sp
                     )
 
                     Button(
@@ -297,40 +339,56 @@ fun MainDashboardScreen(context: Context) {
                             context.startActivity(intent)
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isAccessibilityEnabled) Color(0xFF2E7D32) else Color(0xFFC62828)
-                        )
+                            containerColor = if (isAccessibilityEnabled) CyberGreen.copy(alpha = 0.15f) else CyberAmber,
+                            contentColor = if (isAccessibilityEnabled) CyberGreen else CyberDark
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .border(
+                                1.dp, 
+                                if (isAccessibilityEnabled) CyberGreen else Color.Transparent, 
+                                RoundedCornerShape(24.dp)
+                            )
                     ) {
                         Text(
-                            text = if (isAccessibilityEnabled) "MANAGE SETTINGS" else "ACTIVATE INTERCEPTOR",
-                            color = Color.White
+                            text = if (isAccessibilityEnabled) "CONFIGURE INTERCEPTOR" else "ACTIVATE INTERCEPTOR SHIELD",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
                         )
                     }
                 }
             }
 
-            // Setting Panel Card (Voice toggle & Stealth Mode)
+            // 3. Settings Control Panel
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Color(0xFF23304A), RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = CyberCard)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Voice Toggle
+                Column(
+                    modifier = Modifier.padding(18.dp), 
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    // Voice Switch
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Voice Assistant Mode",
+                                text = "🗣️ Voice Assistant Mode",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
+                                fontSize = 15.sp,
+                                color = CyberTextPrimary
                             )
                             Text(
-                                text = "Read permission safety card aloud",
-                                fontSize = 12.sp,
-                                color = Color.Gray
+                                text = "Reads aloud permission warnings dynamically.",
+                                fontSize = 11.sp,
+                                color = CyberTextSecondary
                             )
                         }
                         Switch(
@@ -343,30 +401,33 @@ fun MainDashboardScreen(context: Context) {
                                     .apply()
                             },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color(0xFF00796B),
-                                checkedTrackColor = Color(0xFFB2DFDB)
+                                checkedThumbColor = CyberDark,
+                                checkedTrackColor = CyberBlue,
+                                uncheckedThumbColor = CyberTextSecondary,
+                                uncheckedTrackColor = Color(0xFF23304A)
                             )
                         )
                     }
 
-                    Divider()
+                    HorizontalDivider(color = Color(0xFF23304A), thickness = 0.8.dp)
 
-                    // Stealth Toggle
+                    // Stealth Icon Cloaking Switch
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Stealth Icon Cloaking",
+                                text = "🔍 Stealth Icon Cloaking",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
+                                fontSize = 15.sp,
+                                color = CyberTextPrimary
                             )
                             Text(
-                                text = "Swaps SheSafe icon for a Calculator",
-                                fontSize = 12.sp,
-                                color = Color.Gray
+                                text = "Masks SheSafe behind a secondary calculator icon.",
+                                fontSize = 11.sp,
+                                color = CyberTextSecondary
                             )
                         }
                         Switch(
@@ -380,20 +441,22 @@ fun MainDashboardScreen(context: Context) {
                                 toggleLauncherStealth(checked)
                             },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color(0xFF00796B),
-                                checkedTrackColor = Color(0xFFB2DFDB)
+                                checkedThumbColor = CyberDark,
+                                checkedTrackColor = CyberBlue,
+                                uncheckedThumbColor = CyberTextSecondary,
+                                uncheckedTrackColor = Color(0xFF23304A)
                             )
                         )
                     }
                 }
             }
 
-            // Private Vault & Panic Trigger
+            // 4. Secure Action Controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Open Vault
+                // Private Vault Button
                 Button(
                     onClick = {
                         if (VaultAuthManager.isPinSetup(context)) {
@@ -402,55 +465,70 @@ fun MainDashboardScreen(context: Context) {
                             showPinSetup = true
                         }
                     },
-                    modifier = Modifier.weight(1.2f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = CyberBlue),
+                    shape = RoundedCornerShape(24.dp)
                 ) {
-                    Text("PRIVATE VAULT")
+                    Text("🔑 SECURE VAULT", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
 
-                // Panic button
-                Button(
+                // Panic Button
+                OutlinedButton(
                     onClick = {
                         VaultAuthManager.executePanicWipe(context)
-                        // Terminate process immediately after wipe
                         (context as? ComponentActivity)?.finishAffinity()
                         System.exit(0)
                     },
-                    modifier = Modifier.weight(0.8f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                    modifier = Modifier
+                        .weight(0.8f)
+                        .height(48.dp)
+                        .border(1.2.dp, CyberRed, RoundedCornerShape(24.dp)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = CyberRed.copy(alpha = 0.08f),
+                        contentColor = CyberRed
+                    ),
+                    shape = RoundedCornerShape(24.dp)
                 ) {
-                    Text("PANIC WIPE")
+                    Text("🚨 PANIC WIPE", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 }
             }
 
-            // Personal Trust Seal Selector Card
+            // 5. Personal Trust Seal Selector
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Color(0xFF23304A), RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = CyberCard)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        text = "Personal Trust Seal",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                    Text(
-                        text = "Select a secret symbol. Genuine cards will show this.",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
+                    Column {
+                        Text(
+                            text = "🌻 Anti-Spoof Personal Trust Seal",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = CyberTextPrimary
+                        )
+                        Text(
+                            text = "Genuine warning prompts display your chosen seal below.",
+                            fontSize = 11.sp,
+                            color = CyberTextSecondary
+                        )
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         trustSeals.forEach { seal ->
                             val isSelected = seal == selectedSeal
-                            val borderCol = if (isSelected) Color(0xFF00796B) else Color.Transparent
-                            val backCol = if (isSelected) Color(0xFFE0F7FA) else Color.Transparent
+                            val borderCol = if (isSelected) CyberBlue else Color.Transparent
+                            val backCol = if (isSelected) CyberBlue.copy(alpha = 0.15f) else Color(0xFF1F2B45)
                             
                             OutlinedButton(
                                 onClick = {
@@ -463,28 +541,29 @@ fun MainDashboardScreen(context: Context) {
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(containerColor = backCol),
                                 modifier = Modifier
-                                    .size(54.dp)
-                                    .border(2.dp, borderCol, RoundedCornerShape(12.dp)),
+                                    .size(48.dp)
+                                    .border(1.5.dp, borderCol, RoundedCornerShape(12.dp)),
                                 contentPadding = PaddingValues(0.dp)
                             ) {
-                                Text(text = seal, fontSize = 24.sp)
+                                Text(text = seal, fontSize = 20.sp)
                             }
                         }
                     }
                 }
             }
 
-            // Consent Logs Header
+            // 6. Local Safety History Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Local Safety History",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.DarkGray
+                    text = "Local Audit History",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 16.sp,
+                    color = CyberTextPrimary,
+                    letterSpacing = 0.5.sp
                 )
                 if (consentLogs.isNotEmpty()) {
                     TextButton(
@@ -495,28 +574,32 @@ fun MainDashboardScreen(context: Context) {
                             }
                         }
                     ) {
-                        Text("Clear History", color = Color(0xFFC62828))
+                        Text("Purge Logs", color = CyberRed, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }
 
-            // Consent Logs List
+            // 7. Consent Logs List
             if (consentLogs.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(1f)
+                        .background(CyberCard, RoundedCornerShape(16.dp))
+                        .border(1.dp, Color(0xFF23304A), RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No recorded permission alerts yet.",
-                        color = Color.Gray,
-                        fontSize = 14.sp
+                        text = "No permission intercept logs recorded.",
+                        color = CyberTextSecondary,
+                        fontSize = 13.sp
                     )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(consentLogs) { log ->
@@ -562,7 +645,7 @@ fun MainDashboardScreen(context: Context) {
                             showVaultContent = true
                         }
                         VaultAuthManager.AuthResult.FAILED -> {
-                            // Authentication failed warning
+                            // PIN mismatch
                         }
                     }
                 },
@@ -604,19 +687,15 @@ fun MainDashboardScreen(context: Context) {
 fun LogItemRow(log: ConsentLog, onClick: () -> Unit) {
     val sdf = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
     val dateString = sdf.format(Date(log.timestamp))
-
-    val decisionColor = when (log.decision) {
-        "ALLOWED" -> Color(0xFF2E7D32)
-        "BLOCKED" -> Color(0xFFC62828)
-        else -> Color.Gray
-    }
+    val isDecisionAllowed = log.decision == "ALLOWED"
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+            .clickable { onClick() }
+            .border(0.8.dp, Color(0xFF23304A), RoundedCornerShape(14.dp)),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CyberCard)
     ) {
         Row(
             modifier = Modifier
@@ -627,41 +706,48 @@ fun LogItemRow(log: ConsentLog, onClick: () -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = log.appPackage.substringAfterLast("."),
+                    text = log.appPackage.substringAfterLast(".").uppercase(Locale.ROOT),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    color = CyberBlue
                 )
                 Text(
                     text = log.permissionRequested.substringAfterLast("."),
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = CyberTextPrimary
                 )
                 Text(
-                    text = "$dateString • Click to view ZKCP Proof",
+                    text = "$dateString • Verify Proof",
                     fontSize = 10.sp,
-                    color = Color.Gray
+                    color = CyberTextSecondary
                 )
             }
 
-            Column(horizontalAlignment = Alignment.End) {
-                Box(
-                    modifier = Modifier
-                        .background(decisionColor.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = log.decision,
-                        color = decisionColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+            Box(
+                modifier = Modifier
+                    .background(
+                        if (isDecisionAllowed) CyberGreen.copy(alpha = 0.12f) else CyberRed.copy(alpha = 0.12f),
+                        RoundedCornerShape(8.dp)
                     )
-                }
+                    .border(
+                        1.dp,
+                        if (isDecisionAllowed) CyberGreen.copy(alpha = 0.5f) else CyberRed.copy(alpha = 0.5f),
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = log.decision,
+                    color = if (isDecisionAllowed) CyberGreen else CyberRed,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.5.sp
+                )
             }
         }
     }
 }
 
-// Dialog Composable Helpers
 @Composable
 fun PinSetupDialog(
     onConfirm: (real: String, duress: String) -> Unit,
@@ -672,38 +758,70 @@ fun PinSetupDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Configure Vault PINs") },
+        title = { 
+            Text(
+                "Configure Vault Access", 
+                fontWeight = FontWeight.Bold,
+                color = CyberBlue,
+                fontSize = 18.sp
+            ) 
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Set a 4-digit PIN to access private history.", fontSize = 13.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Set a 4-digit master PIN for legitimate access to private history and items:", 
+                    fontSize = 12.sp, 
+                    color = CyberTextPrimary
+                )
                 OutlinedTextField(
                     value = realPin,
-                    onValueChange = { if (it.length <= 4) realPin = it },
-                    label = { Text("Main PIN") },
+                    onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) realPin = it },
+                    label = { Text("Master PIN") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    visualTransformation = PasswordVisualTransformation()
+                    visualTransformation = PasswordVisualTransformation(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyberBlue,
+                        unfocusedBorderColor = Color(0xFF23304A),
+                        focusedLabelColor = CyberBlue
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Text("Set a different PIN to trigger decoy mode under duress.", fontSize = 13.sp)
+                Text(
+                    "Set a secondary Duress PIN to trigger decoy mode during forced inspections:", 
+                    fontSize = 12.sp, 
+                    color = CyberTextPrimary
+                )
                 OutlinedTextField(
                     value = duressPin,
-                    onValueChange = { if (it.length <= 4) duressPin = it },
-                    label = { Text("Duress PIN") },
+                    onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) duressPin = it },
+                    label = { Text("Duress Decoy PIN") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    visualTransformation = PasswordVisualTransformation()
+                    visualTransformation = PasswordVisualTransformation(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyberBlue,
+                        unfocusedBorderColor = Color(0xFF23304A),
+                        focusedLabelColor = CyberBlue
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = { if (realPin.length == 4 && duressPin.length == 4 && realPin != duressPin) onConfirm(realPin, duressPin) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))
+                colors = ButtonDefaults.buttonColors(containerColor = CyberBlue),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text("SAVE PINS")
+                Text("SAVE SECURE CONFIG", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = CyberDark)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL") }
-        }
+            TextButton(onClick = onDismiss) { 
+                Text("CANCEL", color = CyberTextSecondary) 
+            }
+        },
+        containerColor = CyberCard,
+        modifier = Modifier.border(1.dp, Color(0xFF23304A), RoundedCornerShape(28.dp))
     )
 }
 
@@ -716,27 +834,45 @@ fun PinPromptDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Enter Vault PIN") },
+        title = { 
+            Text(
+                "Secure Authenticator", 
+                fontWeight = FontWeight.Bold,
+                color = CyberBlue,
+                fontSize = 18.sp
+            ) 
+        },
         text = {
             OutlinedTextField(
                 value = enteredPin,
-                onValueChange = { if (it.length <= 4) enteredPin = it },
-                label = { Text("4-Digit PIN") },
+                onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) enteredPin = it },
+                label = { Text("Enter 4-Digit PIN") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                visualTransformation = PasswordVisualTransformation()
+                visualTransformation = PasswordVisualTransformation(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = CyberBlue,
+                    unfocusedBorderColor = Color(0xFF23304A),
+                    focusedLabelColor = CyberBlue
+                ),
+                modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
             Button(
                 onClick = { if (enteredPin.length == 4) onConfirm(enteredPin) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))
+                colors = ButtonDefaults.buttonColors(containerColor = CyberBlue),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text("UNLOCK")
+                Text("UNLOCK VAULT", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = CyberDark)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL") }
-        }
+            TextButton(onClick = onDismiss) { 
+                Text("CANCEL", color = CyberTextSecondary) 
+            }
+        },
+        containerColor = CyberCard,
+        modifier = Modifier.border(1.dp, Color(0xFF23304A), RoundedCornerShape(28.dp))
     )
 }
 
@@ -747,18 +883,34 @@ fun ZkcpProofDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Zero-Knowledge Consent Proof") },
+        title = { 
+            Text(
+                "Zero-Knowledge Proof Receipt", 
+                fontWeight = FontWeight.Bold,
+                color = CyberBlue,
+                fontSize = 18.sp
+            ) 
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("DPDP Act 2025 compliant local verifiable consent receipt:", fontSize = 12.sp, color = Color.Gray)
+                Text(
+                    "DPDP Act 2025 compliant cryptographic consent receipt (locally signed verification token):", 
+                    fontSize = 12.sp, 
+                    color = CyberTextSecondary
+                )
                 Card(
-                    modifier = Modifier.fillMaxWidth().height(160.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFECEFF1))
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .border(1.dp, Color(0xFF23304A), RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = CyberDark)
                 ) {
-                    Box(modifier = Modifier.padding(8.dp)) {
+                    Box(modifier = Modifier.padding(10.dp)) {
                         Text(
                             text = zkcpJson,
                             fontSize = 10.sp,
+                            color = CyberGreen,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             modifier = Modifier.verticalScroll(rememberScrollState())
                         )
@@ -767,10 +919,16 @@ fun ZkcpProofDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))) {
-                Text("OK")
+            Button(
+                onClick = onDismiss, 
+                colors = ButtonDefaults.buttonColors(containerColor = CyberBlue),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("OK", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = CyberDark)
             }
-        }
+        },
+        containerColor = CyberCard,
+        modifier = Modifier.border(1.dp, Color(0xFF23304A), RoundedCornerShape(28.dp))
     )
 }
 
@@ -786,31 +944,58 @@ fun VaultContentDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(if (isDecoy) "Decoy Private Vault" else "Authentic Private Vault")
+            Row(
+                modifier = Modifier.fillMaxWidth(), 
+                horizontalArrangement = Arrangement.SpaceBetween, 
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isDecoy) "Decoy Safe Sandbox" else "Authentic Private Vault",
+                    color = if (isDecoy) CyberAmber else CyberGreen,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 18.sp
+                )
                 if (!isDecoy) {
                     IconButton(onClick = { showAddDialog = true }) {
-                        Text("+", fontSize = 24.sp, color = Color(0xFF00796B))
+                        Text("+", fontSize = 28.sp, color = CyberBlue, fontWeight = FontWeight.ExtraBold)
                     }
                 }
             }
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth().height(260.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp), 
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 if (items.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No private records saved.", color = Color.Gray)
+                        Text("No records locked in vault.", color = CyberTextSecondary)
                     }
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(items) { item ->
                             Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F9F9))
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(0.8.dp, Color(0xFF23304A), RoundedCornerShape(12.dp)),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = CyberDark)
                             ) {
-                                Column(modifier = Modifier.padding(10.dp)) {
-                                    Text(item.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text(item.content, fontSize = 12.sp, color = Color.DarkGray)
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = item.title, 
+                                        fontWeight = FontWeight.Bold, 
+                                        fontSize = 14.sp,
+                                        color = CyberBlue
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = item.content, 
+                                        fontSize = 12.sp, 
+                                        color = CyberTextPrimary
+                                    )
                                 }
                             }
                         }
@@ -819,10 +1004,16 @@ fun VaultContentDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))) {
-                Text("CLOSE")
+            Button(
+                onClick = onDismiss, 
+                colors = ButtonDefaults.buttonColors(containerColor = CyberBlue),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("CLOSE", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = CyberDark)
             }
-        }
+        },
+        containerColor = CyberCard,
+        modifier = Modifier.border(1.dp, Color(0xFF23304A), RoundedCornerShape(28.dp))
     )
 
     if (showAddDialog) {
@@ -846,23 +1037,55 @@ fun AddVaultItemDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Secure New Vault Item") },
+        title = { 
+            Text(
+                "Secure New Entry", 
+                fontWeight = FontWeight.Bold,
+                color = CyberBlue,
+                fontSize = 18.sp
+            ) 
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
-                OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Secret Detail / Contacts") })
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = title, 
+                    onValueChange = { title = it }, 
+                    label = { Text("Title / Header") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyberBlue,
+                        unfocusedBorderColor = Color(0xFF23304A),
+                        focusedLabelColor = CyberBlue
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = content, 
+                    onValueChange = { content = it }, 
+                    label = { Text("Secret Details / Contacts") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyberBlue,
+                        unfocusedBorderColor = Color(0xFF23304A),
+                        focusedLabelColor = CyberBlue
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
             Button(
                 onClick = { if (title.isNotEmpty() && content.isNotEmpty()) onAdd(title, content) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))
+                colors = ButtonDefaults.buttonColors(containerColor = CyberBlue),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text("ADD")
+                Text("LOCK FILE", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = CyberDark)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL") }
-        }
+            TextButton(onClick = onDismiss) { 
+                Text("CANCEL", color = CyberTextSecondary) 
+            }
+        },
+        containerColor = CyberCard,
+        modifier = Modifier.border(1.dp, Color(0xFF23304A), RoundedCornerShape(28.dp))
     )
 }

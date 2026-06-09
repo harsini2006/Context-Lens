@@ -55,65 +55,16 @@ abstract class AppDatabase : RoomDatabase() {
     ) : RoomDatabase.Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
-            INSTANCE?.let { database ->
-                scope.launch(Dispatchers.IO) {
-                    populateInitialRules(database.permissionRuleDao())
-                }
+            scope.launch(Dispatchers.IO) {
+                // Insert initial permission rules using raw SQL statement inside Database Callback
+                // to avoid INSTANCE null references during DB build phase.
+                db.execSQL("INSERT OR IGNORE INTO permission_rules (permissionId, systemLabel, riskLevel, explanationEnglish, explanationHindi, allowedPackagesCSV) VALUES ('android.permission.ACCESS_FINE_LOCATION', 'Location', 'HIGH', 'Can see where you are right now.', 'यह देख सकता है कि आप कहाँ हैं।', 'com.google.android.apps.maps,com.ubercab,com.olaec.customer')")
+                db.execSQL("INSERT OR IGNORE INTO permission_rules (permissionId, systemLabel, riskLevel, explanationEnglish, explanationHindi, allowedPackagesCSV) VALUES ('android.permission.CAMERA', 'Camera', 'MEDIUM', 'Can take photos and record videos.', 'तस्वीरें और वीडियो ले सकता है।', 'com.whatsapp,com.instagram.android,com.google.android.camera')")
+                db.execSQL("INSERT OR IGNORE INTO permission_rules (permissionId, systemLabel, riskLevel, explanationEnglish, explanationHindi, allowedPackagesCSV) VALUES ('android.permission.RECORD_AUDIO', 'Microphone', 'HIGH', 'Can record your voice and sounds.', 'आपकी आवाज़ रिकॉर्ड कर सकता है।', 'com.whatsapp,com.google.android.googlequicksearchbox')")
+                db.execSQL("INSERT OR IGNORE INTO permission_rules (permissionId, systemLabel, riskLevel, explanationEnglish, explanationHindi, allowedPackagesCSV) VALUES ('android.permission.READ_CONTACTS', 'Contacts', 'HIGH', 'Can see names and phone numbers.', 'नाम और फ़ोन नंबर देख सकता है।', 'com.whatsapp,com.google.android.contacts,com.android.phone')")
+                db.execSQL("INSERT OR IGNORE INTO permission_rules (permissionId, systemLabel, riskLevel, explanationEnglish, explanationHindi, allowedPackagesCSV) VALUES ('android.permission.READ_MEDIA_IMAGES', 'Photos & Media', 'MEDIUM', 'Can view photos stored on device.', 'डिवाइस में मौजूद फ़ोटो देख सकता है।', 'com.whatsapp,com.instagram.android,com.google.android.apps.photos')")
+                db.execSQL("INSERT OR IGNORE INTO permission_rules (permissionId, systemLabel, riskLevel, explanationEnglish, explanationHindi, allowedPackagesCSV) VALUES ('android.permission.POST_NOTIFICATIONS', 'Notifications', 'LOW', 'Can show notifications and alerts.', 'सूचनाएं और अलर्ट दिखा सकता है।', '')")
             }
-        }
-
-        private suspend fun populateInitialRules(dao: PermissionRuleDao) {
-            val initialRules = listOf(
-                PermissionRule(
-                    permissionId = "android.permission.ACCESS_FINE_LOCATION",
-                    systemLabel = "Location",
-                    riskLevel = "HIGH",
-                    explanationEnglish = "Can see where you are right now.",
-                    explanationHindi = "यह देख सकता है कि आप कहाँ हैं।",
-                    allowedPackagesCSV = "com.google.android.apps.maps,com.ubercab,com.olaec.customer"
-                ),
-                PermissionRule(
-                    permissionId = "android.permission.CAMERA",
-                    systemLabel = "Camera",
-                    riskLevel = "MEDIUM",
-                    explanationEnglish = "Can take photos and record videos.",
-                    explanationHindi = "तस्वीरें और वीडियो ले सकता है।",
-                    allowedPackagesCSV = "com.whatsapp,com.instagram.android,com.google.android.camera"
-                ),
-                PermissionRule(
-                    permissionId = "android.permission.RECORD_AUDIO",
-                    systemLabel = "Microphone",
-                    riskLevel = "HIGH",
-                    explanationEnglish = "Can record your voice and sounds.",
-                    explanationHindi = "आपकी आवाज़ रिकॉर्ड कर सकता है।",
-                    allowedPackagesCSV = "com.whatsapp,com.google.android.googlequicksearchbox"
-                ),
-                PermissionRule(
-                    permissionId = "android.permission.READ_CONTACTS",
-                    systemLabel = "Contacts",
-                    riskLevel = "HIGH",
-                    explanationEnglish = "Can see names and phone numbers.",
-                    explanationHindi = "नाम और फ़ोन नंबर देख सकता है।",
-                    allowedPackagesCSV = "com.whatsapp,com.google.android.contacts,com.android.phone"
-                ),
-                PermissionRule(
-                    permissionId = "android.permission.READ_MEDIA_IMAGES",
-                    systemLabel = "Photos & Media",
-                    riskLevel = "MEDIUM",
-                    explanationEnglish = "Can view photos stored on device.",
-                    explanationHindi = "डिवाइस में मौजूद फ़ोटो देख सकता है।",
-                    allowedPackagesCSV = "com.whatsapp,com.instagram.android,com.google.android.apps.photos"
-                ),
-                PermissionRule(
-                    permissionId = "android.permission.POST_NOTIFICATIONS",
-                    systemLabel = "Notifications",
-                    riskLevel = "LOW",
-                    explanationEnglish = "Can show notifications and alerts.",
-                    explanationHindi = "सूचनाएं और अलर्ट दिखा सकता है।",
-                    allowedPackagesCSV = ""
-                )
-            )
-            dao.insertRules(initialRules)
         }
     }
 }

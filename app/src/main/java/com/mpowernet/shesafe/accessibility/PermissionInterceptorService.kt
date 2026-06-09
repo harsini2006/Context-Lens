@@ -25,6 +25,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -353,48 +355,41 @@ fun ConsequenceCardOverlay(
     var useHindi by remember { mutableStateOf(false) }
     
     val riskColor = when (assignedRisk) {
-        "HIGH" -> Color(0xFFD32F2F)
-        "MEDIUM" -> Color(0xFFFBC02D)
-        else -> Color(0xFF388E3C)
+        "HIGH" -> Color(0xFFFF1744)   // Neon coral red
+        "MEDIUM" -> Color(0xFFFFB300) // Amber yellow
+        else -> Color(0xFF00E676)     // Neon green
     }
-
-    val gradientBrush = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFFE0F7FA), // Soft Light Blue
-            Color(0xFFFFFFFF)
-        )
-    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0x99000000)), // Dim background
+            .background(Color(0xE60B0F19)), // Deep translucent midnight dark dim
         contentAlignment = Alignment.Center
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(0.92f)
                 .wrapContentHeight()
-                .border(2.dp, riskColor, RoundedCornerShape(16.dp)),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                .border(2.dp, riskColor, RoundedCornerShape(24.dp)),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161E30))
         ) {
             Box(
                 modifier = Modifier
-                    .background(gradientBrush)
+                    .background(Color(0xFF161E30))
                     .padding(24.dp)
             ) {
                 // Trust Seal Floating indicator in top-right corner to prevent overlays
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(50))
-                        .border(1.dp, Color(0xFF00796B), RoundedCornerShape(50))
-                        .padding(8.dp)
+                        .background(Color(0xFF0B0F19), RoundedCornerShape(12.dp))
+                        .border(1.dp, Color(0xFF00B0FF), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = trustSeal,
-                        fontSize = 18.sp
+                        fontSize = 16.sp
                     )
                 }
 
@@ -405,78 +400,92 @@ fun ConsequenceCardOverlay(
                     // Risk Badge
                     Box(
                         modifier = Modifier
-                            .background(riskColor, RoundedCornerShape(12.dp))
+                            .background(riskColor.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                            .border(1.2.dp, riskColor, RoundedCornerShape(12.dp))
                             .padding(horizontal = 16.dp, vertical = 6.dp)
                     ) {
                         Text(
                             text = if (isIntegrityFailed) {
-                                "CORRUPTED / छेड़छाड़"
+                                "⚠️ CHEATING / छेड़छाड़"
                             } else if (assignedRisk == "HIGH") {
-                                "DANGER / खतरा"
+                                "⚠️ CRITICAL / खतरा"
                             } else {
-                                "WARNING / चेतावनी"
+                                "🛡️ CAUTION / चेतावनी"
                             },
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            color = riskColor,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp,
+                            letterSpacing = 0.5.sp
                         )
                     }
 
                     // App Name Context
                     Text(
                         text = if (useHindi) {
-                            "एप्लिकेशन \"$targetPackage\" अनुमति मांग रहा है:"
+                            "एप्लिकेशन \"${targetPackage.substringAfterLast(".")}\" अनुमति मांग रहा है:"
                         } else {
-                            "APPLICATION \"$targetPackage\" IS REQUESTING:"
+                            "APPLICATION \"${targetPackage.substringAfterLast(".")}\" IS REQUESTING:"
                         },
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.DarkGray,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF90A4AE),
                         textAlign = TextAlign.Center
                     )
 
                     // Permission Title
                     Text(
                         text = if (isIntegrityFailed) "INTEGRITY BREACH" else rule.systemLabel.uppercase(),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = riskColor,
-                        textAlign = TextAlign.Center
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Black,
+                        color = if (isIntegrityFailed) Color(0xFFFF1744) else Color(0xFFECEFF1),
+                        textAlign = TextAlign.Center,
+                        letterSpacing = 0.5.sp
                     )
 
-                    // Explanation Card (Max 8 words per sentence layout)
-                    Text(
-                        text = if (isIntegrityFailed) {
-                            if (useHindi) {
-                                "सुरक्षा चेतावनी: ऐप का सत्यापन विफल हो गया। छेड़छाड़ हुई है।"
-                            } else {
-                                "SECURITY WARNING: SYSTEM INTEGRITY VERIFICATION FAILED. THE DEVICE OR APP MAY BE COMPROMISED."
-                            }
-                        } else {
-                            if (useHindi) rule.explanationHindi else rule.explanationEnglish
-                        },
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Black,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 24.sp
-                    )
+                    // Explanation Card
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0xFF23304A), RoundedCornerShape(16.dp)),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0B0F19))
+                    ) {
+                        Box(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = if (isIntegrityFailed) {
+                                    if (useHindi) {
+                                        "सुरक्षा चेतावनी: ऐप का सत्यापन विफल हो गया। छेड़छाड़ हुई है।"
+                                    } else {
+                                        "SECURITY WARNING: SYSTEM INTEGRITY VERIFICATION FAILED. THE DEVICE OR APP MAY BE COMPROMISED."
+                                    }
+                                } else {
+                                    if (useHindi) rule.explanationHindi else rule.explanationEnglish
+                                },
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFFECEFF1),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 22.sp
+                            )
+                        }
+                    }
 
                     // Recommendation Action
                     val recommendationText = if (isIntegrityFailed || assignedRisk == "HIGH") {
-                        if (useHindi) "सलाह: ब्लॉक करें" else "RECOMMENDED ACTION: BLOCK"
+                        if (useHindi) "सलाह: अनुमति ब्लॉक करें (BLOCK)" else "RECOMMENDED ACTION: BLOCK"
                     } else {
-                        if (useHindi) "सलाह: अनुमति दें" else "RECOMMENDED ACTION: ALLOW"
+                        if (useHindi) "सलाह: अनुमति प्रदान करें (ALLOW)" else "RECOMMENDED ACTION: ALLOW"
                     }
                     Text(
                         text = recommendationText,
                         color = riskColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 15.sp,
+                        textAlign = TextAlign.Center,
+                        letterSpacing = 0.5.sp
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     // Buttons Layout
                     Row(
@@ -484,21 +493,31 @@ fun ConsequenceCardOverlay(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         // Translation switch button
-                        Button(
+                        OutlinedButton(
                             onClick = { useHindi = !useHindi },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .border(1.dp, Color(0xFF00B0FF), RoundedCornerShape(22.dp)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color(0xFF00B0FF).copy(alpha = 0.08f),
+                                contentColor = Color(0xFF00B0FF)
+                            ),
+                            shape = RoundedCornerShape(22.dp)
                         ) {
-                            Text(text = if (useHindi) "English" else "हिंदी", color = Color.White)
+                            Text(text = if (useHindi) "English" else "हिंदी", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
 
                         // Close / Action Button
                         Button(
                             onClick = { onDismiss("DISMISSED") },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF23304A)),
+                            shape = RoundedCornerShape(22.dp)
                         ) {
-                            Text(text = if (useHindi) "बंद करें" else "CLOSE", color = Color.White)
+                            Text(text = if (useHindi) "बंद करें" else "CLOSE", color = Color(0xFFECEFF1), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
 
@@ -509,17 +528,23 @@ fun ConsequenceCardOverlay(
                     ) {
                         Button(
                             onClick = { onDismiss("BLOCKED") },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF1744)),
+                            shape = RoundedCornerShape(23.dp)
                         ) {
-                            Text(text = if (useHindi) "ब्लॉक" else "BLOCK", color = Color.White)
+                            Text(text = if (useHindi) "ब्लॉक करें" else "BLOCK ACCESS", color = Color(0xFF0B0F19), fontWeight = FontWeight.Black, fontSize = 12.sp)
                         }
                         Button(
                             onClick = { onDismiss("ALLOWED") },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF388E3C))
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676)),
+                            shape = RoundedCornerShape(23.dp)
                         ) {
-                            Text(text = if (useHindi) "अनुमति दें" else "ALLOW", color = Color.White)
+                            Text(text = if (useHindi) "मंजूरी दें" else "ALLOW ACCESS", color = Color(0xFF0B0F19), fontWeight = FontWeight.Black, fontSize = 12.sp)
                         }
                     }
                 }
