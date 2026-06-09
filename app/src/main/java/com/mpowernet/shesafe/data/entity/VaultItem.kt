@@ -8,5 +8,6 @@ data class VaultItem(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val content: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val isDecoy: Boolean = false
 )

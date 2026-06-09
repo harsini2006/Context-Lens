@@ -15,7 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Database(entities = [PermissionRule::class, ConsentLog::class, VaultItem::class], version = 2, exportSchema = false)
+@Database(entities = [PermissionRule::class, ConsentLog::class, VaultItem::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun permissionRuleDao(): PermissionRuleDao
     abstract fun consentLogDao(): ConsentLogDao

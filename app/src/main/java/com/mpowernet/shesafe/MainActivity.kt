@@ -113,7 +113,21 @@ fun MainDashboardScreen(context: Context) {
     // Load Vault Items from Room (secured by SQLCipher)
     fun loadVaultItems() {
         coroutineScope.launch(Dispatchers.IO) {
-            val items = database.vaultItemDao().getAllItems()
+            var items = if (isDecoyMode) {
+                database.vaultItemDao().getDecoyItems()
+            } else {
+                database.vaultItemDao().getRealItems()
+            }
+            if (isDecoyMode && items.isEmpty()) {
+                val defaultDecoy = listOf(
+                    VaultItem(title = "Safe Contact", content = "+91 9876543210 (Mother)", timestamp = System.currentTimeMillis(), isDecoy = true),
+                    VaultItem(title = "Shopping Memo", content = "Buy vegetables and milk.", timestamp = System.currentTimeMillis(), isDecoy = true)
+                )
+                for (decoyItem in defaultDecoy) {
+                    database.vaultItemDao().insertItem(decoyItem)
+                }
+                items = database.vaultItemDao().getDecoyItems()
+            }
             withContext(Dispatchers.Main) {
                 vaultItems = items
             }
@@ -524,11 +538,7 @@ fun MainDashboardScreen(context: Context) {
                         }
                         VaultAuthManager.AuthResult.DURESS -> {
                             isDecoyMode = true
-                            // Decoy Mode: seed mock items so intruder sees harmless files
-                            vaultItems = listOf(
-                                VaultItem(title = "Safe Contact", content = "+91 9876543210 (Mother)", timestamp = System.currentTimeMillis()),
-                                VaultItem(title = "Shopping Memo", content = "Buy vegetables and milk.", timestamp = System.currentTimeMillis())
-                            )
+                            loadVaultItems()
                             showVaultContent = true
                         }
                         VaultAuthManager.AuthResult.FAILED -> {
@@ -547,7 +557,12 @@ fun MainDashboardScreen(context: Context) {
                 onAddItem = { title, content ->
                     coroutineScope.launch(Dispatchers.IO) {
                         database.vaultItemDao().insertItem(
-                            VaultItem(title = title, content = content, timestamp = System.currentTimeMillis())
+                            VaultItem(
+                                title = title,
+                                content = content,
+                                timestamp = System.currentTimeMillis(),
+                                isDecoy = isDecoyMode
+                            )
                         )
                         loadVaultItems()
                     }

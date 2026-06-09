@@ -8,8 +8,11 @@ import com.mpowernet.shesafe.data.entity.VaultItem
 
 @Dao
 interface VaultItemDao {
-    @Query("SELECT * FROM vault_items ORDER BY timestamp DESC")
-    suspend fun getAllItems(): List<VaultItem>
+    @Query("SELECT * FROM vault_items WHERE isDecoy = 0 ORDER BY timestamp DESC")
+    suspend fun getRealItems(): List<VaultItem>
+
+    @Query("SELECT * FROM vault_items WHERE isDecoy = 1 ORDER BY timestamp DESC")
+    suspend fun getDecoyItems(): List<VaultItem>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItem(item: VaultItem)
