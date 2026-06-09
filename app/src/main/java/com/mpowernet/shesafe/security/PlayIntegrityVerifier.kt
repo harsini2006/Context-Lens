@@ -92,7 +92,9 @@ object PlayIntegrityVerifier {
         } catch (e: Exception) {
             Log.e(TAG, "Error verifying signatures", e)
         }
-        // Return true for local development purposes, but would log flag if spoofed signature is used
-        return true
+        
+        // Strictly return false in production release mode if signature matches failed
+        val isDebuggable = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        return isDebuggable
     }
 }
