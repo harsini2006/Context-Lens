@@ -69,4 +69,5 @@ dependencies {
     implementation(libs.sqlcipher.android)
     implementation(libs.androidx.sqlite)
     implementation(libs.google.play.integrity)
+    implementation(libs.androidx.biometric)
 }

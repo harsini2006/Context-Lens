@@ -7,16 +7,19 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mpowernet.shesafe.data.dao.ConsentLogDao
 import com.mpowernet.shesafe.data.dao.PermissionRuleDao
+import com.mpowernet.shesafe.data.dao.VaultItemDao
 import com.mpowernet.shesafe.data.entity.ConsentLog
 import com.mpowernet.shesafe.data.entity.PermissionRule
+import com.mpowernet.shesafe.data.entity.VaultItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@Database(entities = [PermissionRule::class, ConsentLog::class], version = 1, exportSchema = false)
+@Database(entities = [PermissionRule::class, ConsentLog::class, VaultItem::class], version = 1, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun permissionRuleDao(): PermissionRuleDao
     abstract fun consentLogDao(): ConsentLogDao
+    abstract fun vaultItemDao(): VaultItemDao
 
     companion object {
         @Volatile

@@ -1,18 +1,23 @@
 package com.mpowernet.shesafe
 
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,10 +25,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mpowernet.shesafe.data.entity.ConsentLog
+import com.mpowernet.shesafe.data.entity.VaultItem
+import com.mpowernet.shesafe.security.VaultAuthManager
+import com.mpowernet.shesafe.security.ZkcpEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,8 +72,17 @@ fun MainDashboardScreen(context: Context) {
     
     var isAccessibilityEnabled by remember { mutableStateOf(false) }
     var isTtsEnabled by remember { mutableStateOf(false) }
+    var isStealthEnabled by remember { mutableStateOf(false) }
     var selectedSeal by remember { mutableStateOf("🌻") }
     var consentLogs by remember { mutableStateOf(emptyList<ConsentLog>()) }
+
+    // Vault Dialog states
+    var showPinSetup by remember { mutableStateOf(false) }
+    var showPinPrompt by remember { mutableStateOf(false) }
+    var showVaultContent by remember { mutableStateOf(false) }
+    var showZkcpProof by remember { mutableStateOf<String?>(null) }
+    var isDecoyMode by remember { mutableStateOf(false) }
+    var vaultItems by remember { mutableStateOf(emptyList<VaultItem>()) }
 
     // Check system security and integrity status
     val isDbValid = SheSafeApplication.isDatabaseIntegrityValid
@@ -91,6 +110,47 @@ fun MainDashboardScreen(context: Context) {
         }
     }
 
+    // Load Vault Items from Room (secured by SQLCipher)
+    fun loadVaultItems() {
+        coroutineScope.launch(Dispatchers.IO) {
+            val items = database.vaultItemDao().getAllItems()
+            withContext(Dispatchers.Main) {
+                vaultItems = items
+            }
+        }
+    }
+
+    // Toggle default/stealth launcher activity aliases
+    fun toggleLauncherStealth(stealth: Boolean) {
+        val pm = context.packageManager
+        val defaultComponent = ComponentName(context, "com.mpowernet.shesafe.MainActivityDefault")
+        val stealthComponent = ComponentName(context, "com.mpowernet.shesafe.MainActivityStealth")
+
+        if (stealth) {
+            pm.setComponentEnabledSetting(
+                defaultComponent,
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP
+            )
+            pm.setComponentEnabledSetting(
+                stealthComponent,
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                PackageManager.DONT_KILL_APP
+            )
+        } else {
+            pm.setComponentEnabledSetting(
+                stealthComponent,
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP
+            )
+            pm.setComponentEnabledSetting(
+                defaultComponent,
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                PackageManager.DONT_KILL_APP
+            )
+        }
+    }
+
     // Initialize state
     LaunchedEffect(Unit) {
         checkServiceStatus()
@@ -98,6 +158,7 @@ fun MainDashboardScreen(context: Context) {
         val prefs = context.getSharedPreferences("shesafe_prefs", Context.MODE_PRIVATE)
         isTtsEnabled = prefs.getBoolean("tts_enabled", false)
         selectedSeal = prefs.getString("personal_trust_seal", "🌻") ?: "🌻"
+        isStealthEnabled = prefs.getBoolean("stealth_enabled", false)
     }
 
     val gradientBrush = Brush.verticalGradient(
@@ -216,45 +277,118 @@ fun MainDashboardScreen(context: Context) {
                 }
             }
 
-            // Setting Panel Card (Voice toggle)
+            // Setting Panel Card (Voice toggle & Stealth Mode)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Voice Assistant Mode",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
-                        Text(
-                            text = "Read permission safety card aloud",
-                            fontSize = 12.sp,
-                            color = Color.Gray
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Voice Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "Voice Assistant Mode",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                text = "Read permission safety card aloud",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Switch(
+                            checked = isTtsEnabled,
+                            onCheckedChange = { checked ->
+                                isTtsEnabled = checked
+                                context.getSharedPreferences("shesafe_prefs", Context.MODE_PRIVATE)
+                                    .edit()
+                                    .putBoolean("tts_enabled", checked)
+                                    .apply()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF00796B),
+                                checkedTrackColor = Color(0xFFB2DFDB)
+                            )
                         )
                     }
-                    Switch(
-                        checked = isTtsEnabled,
-                        onCheckedChange = { checked ->
-                            isTtsEnabled = checked
-                            context.getSharedPreferences("shesafe_prefs", Context.MODE_PRIVATE)
-                                .edit()
-                                .putBoolean("tts_enabled", checked)
-                                .apply()
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF00796B),
-                            checkedTrackColor = Color(0xFFB2DFDB)
+
+                    Divider()
+
+                    // Stealth Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "Stealth Icon Cloaking",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                text = "Swaps SheSafe icon for a Calculator",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Switch(
+                            checked = isStealthEnabled,
+                            onCheckedChange = { checked ->
+                                isStealthEnabled = checked
+                                context.getSharedPreferences("shesafe_prefs", Context.MODE_PRIVATE)
+                                    .edit()
+                                    .putBoolean("stealth_enabled", checked)
+                                    .apply()
+                                toggleLauncherStealth(checked)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF00796B),
+                                checkedTrackColor = Color(0xFFB2DFDB)
+                            )
                         )
-                    )
+                    }
+                }
+            }
+
+            // Private Vault & Panic Trigger
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Open Vault
+                Button(
+                    onClick = {
+                        if (VaultAuthManager.isPinSetup(context)) {
+                            showPinPrompt = true
+                        } else {
+                            showPinSetup = true
+                        }
+                    },
+                    modifier = Modifier.weight(1.2f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))
+                ) {
+                    Text("PRIVATE VAULT")
+                }
+
+                // Panic button
+                Button(
+                    onClick = {
+                        VaultAuthManager.executePanicWipe(context)
+                        // Terminate process immediately after wipe
+                        (context as? ComponentActivity)?.finishAffinity()
+                        System.exit(0)
+                    },
+                    modifier = Modifier.weight(0.8f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                ) {
+                    Text("PANIC WIPE")
                 }
             }
 
@@ -355,16 +489,84 @@ fun MainDashboardScreen(context: Context) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(consentLogs) { log ->
-                        LogItemRow(log)
+                        LogItemRow(log, onClick = {
+                            // Generate Zero-Knowledge Consent Proof (ZKCP) on click
+                            val zkcpReceipt = ZkcpEngine.generateZkcpProof(log)
+                            showZkcpProof = zkcpReceipt
+                        })
                     }
                 }
             }
+        }
+
+        // --- SECTION MODALS (PIN setups, Vault, and proofs) ---
+        if (showPinSetup) {
+            PinSetupDialog(
+                onConfirm = { real, duress ->
+                    VaultAuthManager.setupPins(context, real, duress)
+                    showPinSetup = false
+                    showPinPrompt = true
+                },
+                onDismiss = { showPinSetup = false }
+            )
+        }
+
+        if (showPinPrompt) {
+            PinPromptDialog(
+                onConfirm = { pin ->
+                    showPinPrompt = false
+                    val result = VaultAuthManager.authenticate(context, pin)
+                    when (result) {
+                        VaultAuthManager.AuthResult.REAL -> {
+                            isDecoyMode = false
+                            loadVaultItems()
+                            showVaultContent = true
+                        }
+                        VaultAuthManager.AuthResult.DURESS -> {
+                            isDecoyMode = true
+                            // Decoy Mode: seed mock items so intruder sees harmless files
+                            vaultItems = listOf(
+                                VaultItem(title = "Safe Contact", content = "+91 9876543210 (Mother)", timestamp = System.currentTimeMillis()),
+                                VaultItem(title = "Shopping Memo", content = "Buy vegetables and milk.", timestamp = System.currentTimeMillis())
+                            )
+                            showVaultContent = true
+                        }
+                        VaultAuthManager.AuthResult.FAILED -> {
+                            // Authentication failed warning
+                        }
+                    }
+                },
+                onDismiss = { showPinPrompt = false }
+            )
+        }
+
+        if (showVaultContent) {
+            VaultContentDialog(
+                items = vaultItems,
+                isDecoy = isDecoyMode,
+                onAddItem = { title, content ->
+                    coroutineScope.launch(Dispatchers.IO) {
+                        database.vaultItemDao().insertItem(
+                            VaultItem(title = title, content = content, timestamp = System.currentTimeMillis())
+                        )
+                        loadVaultItems()
+                    }
+                },
+                onDismiss = { showVaultContent = false }
+            )
+        }
+
+        if (showZkcpProof != null) {
+            ZkcpProofDialog(
+                zkcpJson = showZkcpProof!!,
+                onDismiss = { showZkcpProof = null }
+            )
         }
     }
 }
 
 @Composable
-fun LogItemRow(log: ConsentLog) {
+fun LogItemRow(log: ConsentLog, onClick: () -> Unit) {
     val sdf = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
     val dateString = sdf.format(Date(log.timestamp))
 
@@ -375,7 +577,9 @@ fun LogItemRow(log: ConsentLog) {
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
@@ -398,9 +602,9 @@ fun LogItemRow(log: ConsentLog) {
                     color = Color.Gray
                 )
                 Text(
-                    text = dateString,
+                    text = "$dateString • Click to view ZKCP Proof",
                     fontSize = 10.sp,
-                    color = Color.LightGray
+                    color = Color.Gray
                 )
             }
 
@@ -421,3 +625,215 @@ fun LogItemRow(log: ConsentLog) {
         }
     }
 }
+
+// Dialog Composable Helpers
+@Composable
+fun PinSetupDialog(
+    onConfirm: (real: String, duress: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var realPin by remember { mutableStateOf("") }
+    var duressPin by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Configure Vault PINs") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Set a 4-digit PIN to access private history.", fontSize = 13.sp)
+                OutlinedTextField(
+                    value = realPin,
+                    onValueChange = { if (it.length <= 4) realPin = it },
+                    label = { Text("Main PIN") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                Text("Set a different PIN to trigger decoy mode under duress.", fontSize = 13.sp)
+                OutlinedTextField(
+                    value = duressPin,
+                    onValueChange = { if (it.length <= 4) duressPin = it },
+                    label = { Text("Duress PIN") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    visualTransformation = PasswordVisualTransformation()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (realPin.length == 4 && duressPin.length == 4 && realPin != duressPin) onConfirm(realPin, duressPin) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))
+            ) {
+                Text("SAVE PINS")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL") }
+        }
+    )
+}
+
+@Composable
+fun PinPromptDialog(
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var enteredPin by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Enter Vault PIN") },
+        text = {
+            OutlinedTextField(
+                value = enteredPin,
+                onValueChange = { if (it.length <= 4) enteredPin = it },
+                label = { Text("4-Digit PIN") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = PasswordVisualTransformation()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (enteredPin.length == 4) onConfirm(enteredPin) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))
+            ) {
+                Text("UNLOCK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL") }
+        }
+    )
+}
+
+@Composable
+fun ZkcpProofDialog(
+    zkcpJson: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Zero-Knowledge Consent Proof") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("DPDP Act 2025 compliant local verifiable consent receipt:", fontSize = 12.sp, color = Color.Gray)
+                Card(
+                    modifier = Modifier.fillMaxWidth().height(160.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFECEFF1))
+                ) {
+                    Box(modifier = Modifier.padding(8.dp)) {
+                        Text(
+                            text = zkcpJson,
+                            fontSize = 10.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            modifier = Modifier.verticalScroll(rememberScrollState())
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))) {
+                Text("OK")
+            }
+        }
+    )
+}
+
+@Composable
+fun VaultContentDialog(
+    items: List<VaultItem>,
+    isDecoy: Boolean,
+    onAddItem: (String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(if (isDecoy) "Decoy Private Vault" else "Authentic Private Vault")
+                if (!isDecoy) {
+                    IconButton(onClick = { showAddDialog = true }) {
+                        Text("+", fontSize = 24.sp, color = Color(0xFF00796B))
+                    }
+                }
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().height(260.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (items.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No private records saved.", color = Color.Gray)
+                    }
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(items) { item ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F9F9))
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(item.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(item.content, fontSize = 12.sp, color = Color.DarkGray)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))) {
+                Text("CLOSE")
+            }
+        }
+    )
+
+    if (showAddDialog) {
+        AddVaultItemDialog(
+            onAdd = { title, content ->
+                onAddItem(title, content)
+                showAddDialog = false
+            },
+            onDismiss = { showAddDialog = false }
+        )
+    }
+}
+
+@Composable
+fun AddVaultItemDialog(
+    onAdd: (String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Secure New Vault Item") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
+                OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Secret Detail / Contacts") })
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (title.isNotEmpty() && content.isNotEmpty()) onAdd(title, content) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B))
+            ) {
+                Text("ADD")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL") }
+        }
+    )
+}
+
+// Add scrolling import/modifier support
+@Composable
+fun rememberScrollState() = androidx.compose.foundation.rememberScrollState()
+@Composable
+fun Modifier.verticalScroll(state: androidx.compose.foundation.ScrollState) = androidx.compose.foundation.verticalScroll(state)
