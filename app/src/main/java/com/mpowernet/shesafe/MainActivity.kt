@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,7 +56,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SheSafeTheme(content: @compose:Composable () -> Unit) {
+fun SheSafeTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = lightColorScheme(
             primary = Color(0xFF00796B),
@@ -85,8 +87,8 @@ fun MainDashboardScreen(context: Context) {
     var vaultItems by remember { mutableStateOf(emptyList<VaultItem>()) }
 
     // Check system security and integrity status
-    val isDbValid = SheSafeApplication.isDatabaseIntegrityValid
-    val isPlayValid = SheSafeApplication.isPlayIntegrityValid
+    var isDbValid by remember { mutableStateOf(SheSafeApplication.isDatabaseIntegrityValid) }
+    var isPlayValid by remember { mutableStateOf(SheSafeApplication.isPlayIntegrityValid) }
     val isSystemSecure = isDbValid && isPlayValid
 
     val trustSeals = listOf("🌻", "❤️", "⭐", "🌈", "🍀")
@@ -173,6 +175,21 @@ fun MainDashboardScreen(context: Context) {
         isTtsEnabled = prefs.getBoolean("tts_enabled", false)
         selectedSeal = prefs.getString("personal_trust_seal", "🌻") ?: "🌻"
         isStealthEnabled = prefs.getBoolean("stealth_enabled", false)
+        
+        // Asynchronously poll application-level integrity results as they finish loading
+        launch(Dispatchers.Default) {
+            while (true) {
+                val currentDbValid = SheSafeApplication.isDatabaseIntegrityValid
+                val currentPlayValid = SheSafeApplication.isPlayIntegrityValid
+                if (isDbValid != currentDbValid || isPlayValid != currentPlayValid) {
+                    withContext(Dispatchers.Main) {
+                        isDbValid = currentDbValid
+                        isPlayValid = currentPlayValid
+                    }
+                }
+                kotlinx.coroutines.delay(200)
+            }
+        }
     }
 
     val gradientBrush = Brush.verticalGradient(
@@ -504,9 +521,12 @@ fun MainDashboardScreen(context: Context) {
                 ) {
                     items(consentLogs) { log ->
                         LogItemRow(log, onClick = {
-                            // Generate Zero-Knowledge Consent Proof (ZKCP) on click
-                            val zkcpReceipt = ZkcpEngine.generateZkcpProof(log)
-                            showZkcpProof = zkcpReceipt
+                            coroutineScope.launch(Dispatchers.Default) {
+                                val zkcpReceipt = ZkcpEngine.generateZkcpProof(log)
+                                withContext(Dispatchers.Main) {
+                                    showZkcpProof = zkcpReceipt
+                                }
+                            }
                         })
                     }
                 }
@@ -846,9 +866,3 @@ fun AddVaultItemDialog(
         }
     )
 }
-
-// Add scrolling import/modifier support
-@Composable
-fun rememberScrollState() = androidx.compose.foundation.rememberScrollState()
-@Composable
-fun Modifier.verticalScroll(state: androidx.compose.foundation.ScrollState) = androidx.compose.foundation.verticalScroll(state)

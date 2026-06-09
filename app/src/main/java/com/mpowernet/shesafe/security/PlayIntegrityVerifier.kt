@@ -70,7 +70,7 @@ object PlayIntegrityVerifier {
             val packageName = context.packageName
             val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 val packageInfo = pm.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-                packageInfo.signingInfo?.apkContentsSignatures
+                packageInfo.signingInfo?.apkContentsSigners
             } else {
                 val packageInfo = pm.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
                 packageInfo.signatures

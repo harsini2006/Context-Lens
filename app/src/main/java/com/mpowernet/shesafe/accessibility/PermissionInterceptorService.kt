@@ -112,7 +112,9 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
                     serviceScope.launch {
                         delay(150)
                         val rootNode = rootInActiveWindow
-                        val phishingResult = com.mpowernet.shesafe.security.PhishingDetector.analyzeScreen(rootNode)
+                        val phishingResult = withContext(Dispatchers.Default) {
+                            com.mpowernet.shesafe.security.PhishingDetector.analyzeScreen(rootNode)
+                        }
                         if (phishingResult.isPhishing) {
                             val phishingRule = PermissionRule(
                                 permissionId = "PHISHING_ALERT",
@@ -140,8 +142,11 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
 
     private suspend fun inspectActiveWindow() {
         val rootNode = rootInActiveWindow ?: return
-        val texts = mutableListOf<String>()
-        extractTextsFromNode(rootNode, texts)
+        val texts = withContext(Dispatchers.Default) {
+            val list = mutableListOf<String>()
+            extractTextsFromNode(rootNode, list)
+            list
+        }
         
         // Scan for permissions
         var detectedPermission: String? = null
