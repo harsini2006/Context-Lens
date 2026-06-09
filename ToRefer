@@ -216,3 +216,21 @@ Phase 5: Chrome Companion & Testing (Days/Weeks 14-16)
 - Research Enhancements Integrated:
   * TF-IDF Cosine Similarity NLP: Added mathematical term similarity checks inside the layout scan. Computes active layout similarity against pre-seeded system prompts and phishing corpora to detect overlay fraud.
   * Moment-of-Consent Signing: Signs consent logs instantly upon user choice using KeyStore-backed ECDSA key. Saves resulting signatures and random salts directly inside the database table to verify the immutability of the audit ledger.
+
+---------------------------------------------------------
+13. PHASE 5 COMPLETED CHROME COMPANION EXTENSION
+---------------------------------------------------------
+- Files Created:
+  * `chrome-extension/manifest.json` (MV3 configuration registering background service worker and content scripts)
+  * `chrome-extension/background.js` (Coordinates side panel triggers, routing, and chrome.storage logs)
+  * `chrome-extension/content.js` (Coordinates page DOM injection and extension background communications)
+  * `chrome-extension/inject.js` (DOM-level override hooks for Geolocation, getUserMedia, and requestPermission)
+  * `chrome-extension/sidepanel.html` & `sidepanel.js` & `sidepanel.css` (Minimalist UI layout, settings tabs, and warning card actions)
+  * `chrome-extension/icon.png` (Teal shield design generated using PIL)
+
+- Key Features Integrated:
+  * DOM-level API Interception: Injects script at `document_start` to intercept `navigator.geolocation.getCurrentPosition`, `navigator.mediaDevices.getUserMedia`, and `Notification.requestPermission`. Interrupts native execution flows transparently.
+  * Side Panel Warn Interceptor: Relies on `chrome.sidePanel.open` to launch the warning panel when permissions are requested on web pages.
+  * Sparse Consequence Cards: Translates intercepted APIs into sparse sentences (e.g. location -> "THEY CAN SEE WHERE YOU ARE NOW.") mimicking the Android app aesthetics.
+  * Integrated Voice Toggle (TTS): Features button to speak warnings aloud using native `speechSynthesis`.
+  * Local Audit History & Sync: Stores consent history logs and user settings (such as sunflower Personal Trust Seal matching) locally using `chrome.storage.local`.
