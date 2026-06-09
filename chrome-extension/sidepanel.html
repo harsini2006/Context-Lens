@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SheSafe Web Companion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="logo-icon">🛡️</span>
+        <h1>SHESAFE</h1>
+      </div>
+      <div class="tabs">
+        <button id="tab-warnings" class="tab-btn active">Alerts</button>
+        <button id="tab-logs" class="tab-btn">History</button>
+        <button id="tab-settings" class="tab-btn">Settings</button>
+      </div>
+    </header>
+
+    <!-- Warnings Tab -->
+    <main id="view-warnings" class="tab-content active">
+      <div id="no-alerts" class="empty-state">
+        <div class="empty-icon">🌻</div>
+        <h3>YOUR WEB BROWSER IS SAFE</h3>
+        <p>No active permission requests detected.</p>
+      </div>
+
+      <div id="alert-card" class="alert-card hidden">
+        <!-- Trust Seal floating indicator -->
+        <div class="trust-seal-wrapper" title="Personal Trust Seal">
+          <span id="trust-seal-icon">🌻</span>
+        </div>
+
+        <div class="alert-header">
+          <span id="risk-badge" class="badge">HIGH RISK</span>
+          <h2 id="risk-title">LOCATION ACCESS</h2>
+        </div>
+
+        <div class="card-body">
+          <p class="origin-tag">Website: <strong id="site-origin">google.com</strong></p>
+          <div class="consequence-container">
+            <p id="consequence-desc">THEY CAN SEE WHERE YOU ARE NOW.</p>
+          </div>
+
+          <div class="audio-control">
+            <button id="btn-speak" class="icon-btn" title="Listen to warning">🔊 Read Out Loud</button>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button id="btn-block" class="btn btn-block">BLOCK</button>
+          <button id="btn-allow" class="btn btn-allow">ALLOW</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- History Tab -->
+    <main id="view-logs" class="tab-content hidden">
+      <h2>Local Web Consent Log</h2>
+      <div id="logs-container" class="logs-list">
+        <!-- Logs dynamically injected here -->
+      </div>
+      <button id="btn-clear-logs" class="btn btn-secondary">Clear History</button>
+    </main>
+
+    <!-- Settings Tab -->
+    <main id="view-settings" class="tab-content hidden">
+      <h2>Companion Configurations</h2>
+      
+      <div class="setting-group">
+        <label for="seal-select">Choose Personal Trust Seal:</label>
+        <select id="seal-select" class="form-control">
+          <option value="🌻">Sunflower 🌻</option>
+          <option value="❤️">Heart ❤️</option>
+          <option value="⭐">Star ⭐</option>
+          <option value="💎">Diamond 💎</option>
+          <option value="🍀">Clover 🍀</option>
+        </select>
+        <p class="help-text">Verify this icon matches your app seal to verify warning authenticity.</p>
+      </div>
+
+      <div class="setting-group">
+        <label class="switch-container">
+          <input type="checkbox" id="tts-toggle">
+          <span class="switch-slider"></span>
+          Auto Read Warnings (Audio)
+        </label>
+      </div>
+    </main>
+  </div>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
