@@ -188,3 +188,17 @@ Phase 5: Chrome Companion & Testing (Days/Weeks 14-16)
   * Cryptographic Panic Wipe: Pressing the "PANIC WIPE" button triggers full data destruction. It programmatically deletes the SQLCipher Room database file, wipes the decryption key from the Keystore, clears all SharedPreferences preferences, and shuts down the application process.
   * Launcher Icon Cloaking (Stealth Mode): Defined two `<activity-alias>` entries in the Manifest. Programmatically disables default icon component and enables decoy "Calculator" launcher alias at runtime using `PackageManager`.
   * DPDP compliance local audit receipt (ZKCP): Generates local ECDSA signature hashes over permission logs utilizing secp256r1 keys inside Android KeyStore. Allows users to export zero-knowledge compliance receipts proving valid consent timestamping without leaking device identities.
+
+---------------------------------------------------------
+11. PHASE 4 COMPLETED ML & COMPUTER VISION PROTECTION
+---------------------------------------------------------
+- Files Created/Modified:
+  * `app/src/main/java/com/mpowernet/shesafe/security/PhishingDetector.kt` (TFLite loader and hybrid layout heuristic engine)
+  * `app/src/main/java/com/mpowernet/shesafe/security/BehavioralPatternEngine.kt` (Session-level permission velocity tracker)
+  * `app/src/main/java/com/mpowernet/shesafe/accessibility/PermissionInterceptorService.kt` (Integrated real-time screen analysis and velocity checking)
+  * `gradle/libs.versions.toml` & `app/build.gradle.kts` (Added `org.tensorflow:tensorflow-lite:2.14.0` dependency)
+
+- Key Features Integrated:
+  * TFLite Phishing Detector: Integrated TensorFlow Lite inside the accessibility interceptor service. The engine runs hybrid classification over active window text and node densities to flag spoofed overlays mimicking standard system permission sheets.
+  * Layout Heuristics Safeguard: Implemented fallback rules that analyze view structures, keywords (e.g., alert, threat, bank details, credentials), and package identities to prevent UI hijacking.
+  * Behavioral Pattern Engine (FSM): Tracks request timing anomalies. If a foreground application requests multiple sensitive permissions (e.g. mic, camera, location) rapidly (threshold >= 3 within 30 seconds), the engine flags this as a potential permission escalation attempt, overrides standard warnings, and prompts the user to block the app.

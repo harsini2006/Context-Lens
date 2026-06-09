@@ -68,6 +68,10 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         tts = TextToSpeech(this, this)
         database = (application as SheSafeApplication).database
+        
+        // Initialize TFLite phishing detector
+        com.mpowernet.shesafe.security.PhishingDetector.init(applicationContext)
+
         // Read TTS preference
         val prefs = getSharedPreferences("shesafe_prefs", Context.MODE_PRIVATE)
         isTtsEnabled = prefs.getBoolean("tts_enabled", false)
@@ -102,6 +106,24 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
                     if (pkgName.isNotEmpty() && !pkgName.contains("shesafe") && 
                         !pkgName.contains("android") && !pkgName.contains("launcher")) {
                         lastTargetPackage = pkgName
+                    }
+
+                    // Check for spoofed overlays or phishing on external screens
+                    serviceScope.launch {
+                        delay(150)
+                        val rootNode = rootInActiveWindow
+                        val phishingResult = com.mpowernet.shesafe.security.PhishingDetector.analyzeScreen(rootNode)
+                        if (phishingResult.isPhishing) {
+                            val phishingRule = PermissionRule(
+                                permissionId = "PHISHING_ALERT",
+                                systemLabel = "PHISHING ATTEMPT",
+                                riskLevel = "HIGH",
+                                explanationEnglish = "SUSPICIOUS POPUP DETECTED: ${phishingResult.reason}.",
+                                explanationHindi = "संदेहास्पद पॉपअप चेतावनी: ${phishingResult.reason}.",
+                                allowedPackagesCSV = ""
+                            )
+                            showVisualConsequenceOverlay(phishingRule)
+                        }
                     }
                 }
             }
@@ -147,11 +169,27 @@ class PermissionInterceptorService : AccessibilityService(), TextToSpeech.OnInit
 
         if (detectedPermission != null && activePermissionDialog != detectedPermission) {
             activePermissionDialog = detectedPermission
-            val rule = withContext(Dispatchers.IO) {
-                database.permissionRuleDao().getRuleForPermission(detectedPermission)
-            }
-            if (rule != null) {
-                showVisualConsequenceOverlay(rule)
+
+            // Check session velocity anomaly (Permission Escalation Protection)
+            val isAnomaly = com.mpowernet.shesafe.security.BehavioralPatternEngine.recordRequestAndCheckAnomaly(lastTargetPackage)
+            
+            if (isAnomaly) {
+                val anomalyRule = PermissionRule(
+                    permissionId = detectedPermission,
+                    systemLabel = "ESCALATION DETECTED",
+                    riskLevel = "HIGH",
+                    explanationEnglish = "SUSPICIOUS VELOCITY: App requested too many permissions rapidly.",
+                    explanationHindi = "संदेहास्पद गतिविधि: ऐप ने बहुत तेज़ी से अनुमति मांगी।",
+                    allowedPackagesCSV = ""
+                )
+                showVisualConsequenceOverlay(anomalyRule)
+            } else {
+                val rule = withContext(Dispatchers.IO) {
+                    database.permissionRuleDao().getRuleForPermission(detectedPermission)
+                }
+                if (rule != null) {
+                    showVisualConsequenceOverlay(rule)
+                }
             }
         }
     }

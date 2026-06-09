@@ -70,4 +70,5 @@ dependencies {
     implementation(libs.androidx.sqlite)
     implementation(libs.google.play.integrity)
     implementation(libs.androidx.biometric)
+    implementation(libs.tensorflow.lite)
 }
