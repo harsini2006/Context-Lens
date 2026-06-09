@@ -170,7 +170,7 @@ Phase 5: Chrome Companion & Testing (Days/Weeks 14-16)
   * SQLCipher Database Encryption: Upgraded Room DB configuration in `AppDatabase.kt` to encrypt the local SQLite database using a 256-bit AES cryptographic passphrase generated dynamically and encrypted using Android KeyStore-backed AES/GCM keys.
   * Boot-Time Integrity Check: Evaluates database signature hash in `SheSafeApplication.kt`. Triggers high-risk warning screens if file tampering is detected. Automatically updates expected hash upon valid user consent database writes to avoid false positives.
   * Tapjacking Protection: Injected `filterTouchesWhenObscured = true` and `FLAG_SPLIT_TOUCH` on the overlay window layouts in `PermissionInterceptorService.kt` to prevent tap hijack redirection.
-  * Signature Attestation: Checks local package signer against expected production certificate hash as fallback if Google Play Integrity services are unreachable.
+  * Signature Attestation: Checks local package signer against expected production certificate hash as fallback if Google Play Integrity services are unreachable. Hardened to strictly fail verification in production release mode if certificate mismatches occur, while allowing bypasses only for debuggable builds.
 
 ---------------------------------------------------------
 10. PHASE 3 COMPLETED VAULT, STEALTH, & DPDP COMPLIANCE
